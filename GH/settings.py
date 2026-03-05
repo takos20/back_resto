@@ -30,7 +30,7 @@ SECRET_KEY = os.environ.get(
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 # Application definition
 
 ALLOWED_HOSTS = ['*']
@@ -38,7 +38,6 @@ ALLOWED_HOSTS = ['*']
 runserver.default_port = '8016'
 runserver.default_addr = '127.0.0.1'
 
-LOG_DIR = os.path.join(BASE_DIR, "log")
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 # Application definition ALLOWED_HOSTS = ['127.0.0.1','192.168.43.33','192.168.43.212' ,'192.168.137.177', '192.168.6.7']
@@ -242,7 +241,7 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=7),
 }
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
-
+LOG_DIR = os.path.join(BASE_DIR, "log")
 
 LOGGING = {
     'version': 1,
@@ -267,6 +266,12 @@ LOGGING = {
             'filename': os.path.join(LOG_DIR, "errors.logs"),
             'formatter': 'large',
         },
+        'info_file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(LOG_DIR, "info.logs"),
+            'formatter': 'large',
+        },
         'http_client_file': {
             'level': 'INFO',
             'class': 'logging.FileHandler',
@@ -287,6 +292,11 @@ LOGGING = {
         },
         'http_client_file': {
             'handlers': ['http_client_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'info_file': {
+            'handlers': ['info_file'],
             'level': 'INFO',
             'propagate': False,
         },

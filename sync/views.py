@@ -18,7 +18,7 @@ from django.apps import apps
 from rest_framework.response import Response
 from django.utils.dateparse import parse_datetime
 from django.core.paginator import Paginator
-
+import logging
 
 class SyncViewSet(viewsets.ViewSet):
     authentication_classes = []
@@ -28,7 +28,66 @@ class SyncViewSet(viewsets.ViewSet):
     def get_permissions(self):
         return [AllowAny()]
 
+    @action(detail=False, methods=["put","post"], url_path=r'model/(?P<model>[^/.]+)')
+    def sync_model_create(self, request, model=None):
+        api_key = request.headers.get("X-API-KEY")
+        hospital_id = request.data.get("hospital_id")
+        code = request.data.get("code")
 
+        if not hospital_id:
+            return Response({"error": "hospital_id requis"}, status=400)
+        try:
+            config = SyncConfig.objects.get(hospital_id=hospital_id)
+
+            # Vérification API KEY
+            if not api_key or api_key != config.api_token:
+                return Response({"error": "Unauthorized"}, status=401)
+        
+            model_name = model.capitalize()
+            model_path = None
+            for m in config.models_to_sync:
+                if m.endswith(f".{model_name}"):
+                    model_path = m
+                    break
+
+            if not model_path:
+                return Response({"error": "Model non autorisé"}, status=404)
+
+            app_label, model_cls = model_path.split(".")
+            Model = apps.get_model(app_label, model_cls)
+        except SyncConfig.DoesNotExist:
+            return Response({"error": "SyncConfig introuvable"}, status=404)
+        if not code:
+            logging.getLogger('errors_file').info(msg={"error": f"Objet sans code: {request.data}"})
+            return 'failed'
+        try:
+            local_obj = Model.objects.get(code=code, hospital_id=hospital_id)
+            
+            operation = 'UPDATE'
+        except Model.DoesNotExist:
+            
+            local_obj = None
+            operation = 'CREATE'
+
+        try:
+            service = SyncService(hospital_id=hospital_id, config=config)
+            # Appliquer les données
+            if operation == 'CREATE':
+                # Nettoyer les données pour création
+                clean_data = service._clean_data_for_create(request.data)
+                local_obj = Model.objects.create(**clean_data)
+            else:
+                # Mise à jour
+                clean_data = service._clean_data_for_update(request.data)
+                for key, value in clean_data.items():
+                    setattr(local_obj, key, value)
+                local_obj.save()
+            
+            return 'success'
+            
+        except Exception as e:
+            return 'failed'
+      
     @action(detail=False, methods=["get"], url_path=r'model/(?P<model>[^/.]+)')
     def sync_model(self, request, model=None):
 

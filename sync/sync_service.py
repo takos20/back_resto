@@ -7,7 +7,6 @@ from django.utils import timezone
 from datetime import datetime, timedelta
 from .models import SyncLog, SyncConfig
 from django.utils.dateparse import parse_datetime
-logger = logging.getLogger(__name__)
 from django.contrib.contenttypes.models import ContentType
 
 class SyncService:
@@ -33,11 +32,11 @@ class SyncService:
             force: Forcer la sync même si auto_sync est désactivé
         """
         if not self.config.is_active:
-            logger.warning(f"Sync désactivée pour hospital {self.hospital_id}")
+            logging.getLogger('errors_file').info(msg={"error": f"Sync désactivée pour hospital {self.hospital_id}"})
             return
         
         if not self.config.auto_sync and not force:
-            logger.info("Auto-sync désactivé")
+            logging.getLogger('info_file').info(msg="Auto-sync désactivé")
             return
         
         results = {
@@ -58,18 +57,17 @@ class SyncService:
                     results['conflicts'] += model_results['conflicts']
                     results['skipped'] += model_results['skipped']
                 except Exception as e:
-                    logger.error(f"Erreur upload {model_name}: {e}")
+                    logging.getLogger('errors_file').info(msg={"error": f"Erreur upload {model_name}: {e}"})
                     results['failed'] += 1
             
             # Mettre à jour le timestamp
             self.config.last_sync_upload = timezone.now()
             self.config.save()
-            
-            logger.info(f"Upload terminé: {results}")
+            logging.getLogger('errors_file').info(msg={"error": f"Upload terminé: {results}"})
             return results
             
         except Exception as e:
-            logger.error(f"Erreur upload_changes: {e}")
+            logging.getLogger('errors_file').info(msg={"error": f"Erreur upload_changes: {e}"})
             raise
     
     def _upload_model(self, model_name):
@@ -80,12 +78,11 @@ class SyncService:
             app_label, model = model_name.split(".")
             Model = apps.get_model(app_label, model)
         except LookupError:
-            logger.error(f"Modèle {model} introuvable")
+            logging.getLogger('errors_file').info(msg={"error": f"Modèle {model} introuvable"})
             return results
         
         # Récupérer les objets modifiés depuis la dernière sync
         last_sync = self.config.last_sync_upload or timezone.now() - timedelta(days=365)
-        print("last_sync,", last_sync)
         
         # Objets à synchroniser
         queryset = Model.objects.filter(
@@ -93,7 +90,6 @@ class SyncService:
             updatedAt__gt=last_sync,
             deleted=False
         )
-        print(queryset)
         # Si le modèle a is_shared, ne sync que is_shared=True
         if hasattr(Model, 'is_shared'):
             queryset = queryset.filter(is_shared=True)
@@ -103,14 +99,13 @@ class SyncService:
                 result = self._upload_object(obj, model)
                 results[result] += 1
             except Exception as e:
-                logger.error(f"Erreur upload {model} #{obj.id}: {e}")
+                logging.getLogger('errors_file').info(msg={"error": f"Erreur upload {model} #{obj.id}: {e}"})
                 results['failed'] += 1
         
         return results
     
     def _upload_object(self, obj, model_name):
         """Uploader un objet individuel"""
-        print("ici")
         # Vérifier s'il existe déjà un log en attente
         existing_log = SyncLog.objects.filter(
             hospital_id=self.hospital_id,
@@ -138,6 +133,7 @@ class SyncService:
             # Préparer les données
             data = self._serialize_object(obj)
             data['hospital_id'] = self.hospital_id
+            print ("data", data)
             
             # Envoyer au serveur distant
             url = f"{self.config.remote_api_url}/sync/model/{model_name.lower()}"
@@ -192,11 +188,11 @@ class SyncService:
             force: Forcer la sync même si auto_sync est désactivé
         """
         if not self.config.is_active:
-            logger.warning(f"Sync désactivée pour hospital {self.hospital_id}")
+            logging.getLogger('errors_file').info(msg={"error": f"Sync désactivée pour hospital {self.hospital_id}"})
             return
         
         if not self.config.auto_sync and not force:
-            logger.info("Auto-sync désactivé")
+            logging.getLogger('info_file').info(msg="Auto-sync désactivé")
             return
         
         results = {
@@ -216,18 +212,17 @@ class SyncService:
                     results['conflicts'] += model_results['conflicts']
                     results['skipped'] += model_results['skipped']
                 except Exception as e:
-                    logger.error(f"Erreur download {model_name}: {e}")
+                    logging.getLogger('errors_file').info(msg={"error": f"Erreur download {model_name}: {e}"})
                     results['failed'] += 1
             
             # Mettre à jour le timestamp
             self.config.last_sync_download = timezone.now()
             self.config.save()
-            
-            logger.info(f"Download terminé: {results}")
+            logging.getLogger('errors_file').info(msg={"error": f"Download terminé: {results}"})
             return results
             
         except Exception as e:
-            logger.error(f"Erreur download_changes: {e}")
+            logging.getLogger('errors_file').info(msg={"error": f"Erreur download_changes: {e}"})
             raise
     
     def _download_model(self, model_name):
@@ -238,7 +233,7 @@ class SyncService:
             app_label, model = model_name.split(".")
             Model = apps.get_model(app_label, model)
         except LookupError:
-            logger.error(f"Modèle {model} introuvable")
+            logging.getLogger('errors_file').info(msg={"error": f"Modèle {model} introuvable"})
             return results
         
         # Récupérer les modifications depuis le serveur
@@ -262,11 +257,11 @@ class SyncService:
                     result = self._download_object(remote_data, Model)
                     results[result] += 1
                 except Exception as e:
-                    logger.error(f"Erreur download {model_name}: {e}")
+                    logging.getLogger('errors_file').info(msg={"error": f"Erreur download {model_name}: {e}"})
                     results['failed'] += 1
             
         except requests.exceptions.RequestException as e:
-            logger.error(f"Erreur HTTP download {model_name}: {e}")
+            logging.getLogger('errors_file').info(msg={"error": f"Erreur HTTP download {model_name}: {e}"})
             results['failed'] += 1
         
         return results
@@ -278,7 +273,7 @@ class SyncService:
         # Identifier l'objet local
         code = remote_data.get('code')
         if not code:
-            logger.error(f"Objet sans code: {remote_data}")
+            logging.getLogger('errors_file').info(msg={"error": f"Objet sans code: {remote_data}"})
             return 'failed'
         try:
             local_obj = Model.objects.get(code=code, hospital_id=self.hospital_id)
@@ -302,8 +297,7 @@ class SyncService:
                 local_updatedAt=local_obj.updatedAt if local_obj else timezone.now()
             )
         except Exception as e:
-
-            print(f"Erreur create synclog: {e}")
+            logging.getLogger('errors_file').info(msg={"error": f"Erreur create synclog: {e}"})
 
         try:
             # Vérifier les conflits
