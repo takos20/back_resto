@@ -83,10 +83,10 @@ class SyncViewSet(viewsets.ViewSet):
                     setattr(local_obj, key, value)
                 local_obj.save()
             
-            return 'success'
+            return Response({'message': 'Upload terminé', 'results': clean_data}, status=201)
             
         except Exception as e:
-            return 'failed'
+            return Response({'error': str(e)}, status=500)
       
     @action(detail=False, methods=["get"], url_path=r'model/(?P<models>[^/.]+)', url_name='sync-model-list')
     def sync_model_list(self, request, models=None):
