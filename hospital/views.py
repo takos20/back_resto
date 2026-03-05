@@ -329,6 +329,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         user = self.get_object()
+        History.objects.filter(user=user).delete()
         user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 

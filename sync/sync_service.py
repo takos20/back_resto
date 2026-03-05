@@ -48,7 +48,6 @@ class SyncService:
         
         try:
             # Pour chaque modèle à synchroniser
-            print(self.config.models_to_sync)
             for model_name in self.config.models_to_sync:
                 try:
                     model_results = self._upload_model(model_name)
@@ -92,7 +91,7 @@ class SyncService:
         )
         # Si le modèle a is_shared, ne sync que is_shared=True
         if hasattr(Model, 'is_shared'):
-            queryset = queryset.filter(is_shared=True)
+            queryset = queryset.filter(is_shared=False)
         
         for obj in queryset:
             try:
@@ -133,7 +132,7 @@ class SyncService:
             # Préparer les données
             data = self._serialize_object(obj)
             data['hospital_id'] = self.hospital_id
-            print ("data", data)
+            data.pop("hospital")
             
             # Envoyer au serveur distant
             url = f"{self.config.remote_api_url}/sync/model/{model_name.lower()}"
