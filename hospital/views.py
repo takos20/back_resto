@@ -10,6 +10,7 @@ from django.utils.translation import gettext_lazy as _
 # from django.utils.translation import ugettext_lazy as _
 from io import BytesIO
 from xhtml2pdf import pisa
+from decimal import Decimal
 from django.template.loader import get_template
 from django.http import HttpResponse
 # Create your views here.
@@ -3035,7 +3036,7 @@ class DetailsBillsViewSet(viewsets.ModelViewSet):
         else:
             errors = {"is_inventory": ["Current inventory."]}
             return Response(errors, status=status.HTTP_400_BAD_REQUEST)
-
+    @transaction.atomic
     def update(self, request, *args, **kwargs):
         user = self.request.user
         path = request.path
@@ -5616,6 +5617,7 @@ class SuppliersViewSet(viewsets.ModelViewSet):
         suppliers_form = SuppliersForm(request.data, instance=suppliers)
         if suppliers_form.is_valid():
             suppliers = suppliers_form.save()
+            suppliers.hospital = self.request.user.hospital
             suppliers.save()
             serializer = self.get_serializer(suppliers, many=False)
             return Response(data=serializer.data, status=status.HTTP_200_OK)
@@ -6353,7 +6355,6 @@ class DetailsSuppliesViewSet(viewsets.ModelViewSet):
                 detailsSupplies.storage_depots = request.data["storage_depots"]
                 detailsSupplies.supplies = get_supplies
                 unit_cost = detailsSupplies.total_amount / detailsSupplies.quantity
-                print(unit_cost)
                 detailsSupplies.unit_price = unit_cost
                 # if detailsSupplies.ingredient.stock_quantity > 0:
                 #     old_value = Decimal(detailsSupplies.ingredient.stock_quantity) * Decimal(detailsSupplies.ingredient.price_per_unit)
@@ -6382,34 +6383,50 @@ class DetailsSuppliesViewSet(viewsets.ModelViewSet):
         # else:
         #     errors = {"is_inventory": ["Current inventory."]}
         #     return Response(errors, status=status.HTTP_400_BAD_REQUEST)
-
+    @transaction.atomic
     def update(self, request, *args, **kwargs):
+        user = self.request.user
         path = request.path
         end_path = path.rsplit("/", 1)[-1]
-        get_bills = Supplies.objects.filter(id=end_path).last()
-        
-        detailsSupplies_form = DetailsSuppliesForm(data=request.data)
-        if detailsSupplies_form.is_valid():
-            user = self.request.user
-        
-            detailsSupplies = detailsSupplies_form.save()
-            detailsSupplies.hospital = user.hospital
-            detailsSupplies.storage_depots_id = request.data[
-                "storage_depots"
-            ]
-            detailsSupplies.supplies_id = end_path
-            detailsSupplies.user_id = user.id
-            detailsSupplies.timeAt = time.strftime(
-                "%H:%M:%S", time.localtime()
-            )
-            detailsSupplies.save()
-            serializer = self.get_serializer(detailsSupplies, many=False)
+        get_bills = DetailsSupplies.objects.filter(id=end_path, hospital = user.hospital, supplies_id = request.data["supplies"], user_id = user.id).last()
+        if get_bills:
+            get_bills.arrival_price = Decimal(request.data["arrival_price"])
+            get_bills.business_unit = request.data["business_unit"]
+            get_bills.quantity = Decimal(request.data["quantity"])
+            get_bills.quantity_two = request.data["quantity_two"]
+            get_bills.timeAt = timezone.now().time()
+            get_bills.total_amount = Decimal(request.data["total_amount"])
+            get_bills.unit_price = Decimal(request.data["total_amount"]) / Decimal(request.data["quantity"])
+            get_bills.updatedAt = timezone.now()
+
+            get_bills.save()
+            serializer = self.get_serializer(get_bills, many=False)
             return Response(
                 data=serializer.data, status=status.HTTP_201_CREATED
             )
+        else:
 
-        errors = {**detailsSupplies_form.errors}
-        return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+            detailsSupplies_form = DetailsSuppliesForm(data=request.data)
+            if detailsSupplies_form.is_valid():
+                
+                detailsSupplies = detailsSupplies_form.save()
+                detailsSupplies.hospital = user.hospital
+                detailsSupplies.storage_depots_id = request.data[
+                    "storage_depots"
+                ]
+                detailsSupplies.supplies_id = request.data["supplies"]
+                detailsSupplies.user_id = user.id
+                detailsSupplies.timeAt = time.strftime(
+                    "%H:%M:%S", time.localtime()
+                )
+                detailsSupplies.save()
+                serializer = self.get_serializer(detailsSupplies, many=False)
+                return Response(
+                    data=serializer.data, status=status.HTTP_201_CREATED
+                )
+
+            errors = {**detailsSupplies_form.errors}
+            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
 
     def destroy(self, request, *args, **kwargs):
         path = request.path

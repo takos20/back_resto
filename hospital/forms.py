@@ -170,6 +170,8 @@ class InsuranceForm(forms.ModelForm):
 
 class SuppliersForm(forms.ModelForm):
     is_shared = forms.BooleanField(initial=False, required=False)  # Partagé entre structures
+    is_active = forms.BooleanField(initial=True, required=False)  # Partagé entre structures
+    is_default = forms.BooleanField(initial=True, required=False)  # Partagé entre structures
     hospital = forms.ModelChoiceField(required=False, queryset=Hospital.objects.all())
     code = forms.CharField(required=False)
     name = forms.CharField(required=False)
@@ -192,7 +194,7 @@ class SuppliersForm(forms.ModelForm):
 
     class Meta:
         model = Suppliers
-        fields = ('is_shared','hospital','code', 'name', 'name_representative', 'phone_representative', 'phone', 'mailbox', 'city', 'country', 'fax', 'taxpayer_number', 'email')
+        fields = ('is_shared','is_active','is_default','hospital','code', 'name', 'name_representative', 'phone_representative', 'phone', 'mailbox', 'city', 'country', 'fax', 'taxpayer_number', 'email')
 
 
 class SuppliesForm(forms.ModelForm):

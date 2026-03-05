@@ -1518,6 +1518,8 @@ class Suppliers(models.Model):
     name_representative = models.CharField(max_length=255, null=True, blank=True)
     phone_representative = models.CharField(max_length=255, null=True, blank=True)
     deleted = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=False)
+    is_default = models.BooleanField(default=False)
     deletedAt = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     createdAt = models.DateField(auto_now_add=True, null=True, blank=True, verbose_name="Created Date")
     timeAt = models.TimeField(auto_now_add=True, null=True, blank=True)
@@ -2003,7 +2005,6 @@ class DetailsSupplies(models.Model):
     deletedAt = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
     class Meta:
-        unique_together = ('supplies','ingredient')
         db_table = 'details_supplies'
         ordering = ('-createdAt',)
 
