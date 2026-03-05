@@ -2284,6 +2284,19 @@ class RegionViewSet(viewsets.ModelViewSet):
         obj = self.get_object()
         obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @action(detail=False, methods=['post'], url_path='name/exists', permission_classes=[AllowAny])
+    def check_Region(self, request, *args, **kwargs):
+        data = request.data
+        errors = {"name": ["This field already exists."]}
+        if 'name' in data:
+            obj = Region.objects.filter(hospital=self.request.user.hospital,name__icontains=data['name'])
+            if obj:
+                return Response(status=status.HTTP_200_OK)
+            else:
+                return Response(status=status.HTTP_404_NOT_FOUND)
+
+        return Response(errors, status=status.HTTP_400_BAD_REQUEST)
 
 
     @action(detail=False, methods=['get'], url_path='all')
@@ -2316,19 +2329,7 @@ class RegionViewSet(viewsets.ModelViewSet):
                         Region.objects.create(hospital = self.request.user.hospital,name=dbframe.Nom)
         return Response(status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=['post'], url_path='name/exists', permission_classes=[AllowAny])
-    def check_Region(self, request, *args, **kwargs):
-        data = request.data
-        errors = {"name": ["This field already exists."]}
-        if 'name' in data:
-            obj = Region.objects.filter(hospital=self.request.user.hospital,name__icontains=data['name'])
-            if obj:
-                return Response(status=status.HTTP_200_OK)
-            else:
-                return Response(status=status.HTTP_404_NOT_FOUND)
-
-        return Response(errors, status=status.HTTP_400_BAD_REQUEST)
-
+    
 
 class SuppliesViewSet(viewsets.ModelViewSet):
     queryset = Supplies.objects.filter(deleted=False)

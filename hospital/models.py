@@ -332,7 +332,7 @@ def add_city():
 class City(models.Model):
     
     is_shared = models.BooleanField(default=False, null=True)  # Partagé entre structures
-    # hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE, null=True)
+    hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE, null=True)
     code = models.CharField(max_length=255, null=True, blank=True, default=add_city)
     region = models.ForeignKey(Region, on_delete=models.CASCADE, null=True)
     name = models.CharField(max_length=255, null=True, blank=True)
@@ -371,7 +371,7 @@ class District(models.Model):
     
     is_shared = models.BooleanField(default=False, null=True)  # Partagé entre structures
     is_default = models.BooleanField(default=False, null=True)  # Partagé entre structures
-    # hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE, null=True)
+    hospital = models.ForeignKey(Hospital, on_delete=models.CASCADE, null=True)
     code = models.CharField(max_length=255, null=True, blank=True, default=add_district)
     city = models.ForeignKey(City, on_delete=models.CASCADE, null=True)
     name = models.CharField(max_length=255, null=True, blank=True)

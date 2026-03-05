@@ -49,6 +49,7 @@ class SyncService:
         
         try:
             # Pour chaque modèle à synchroniser
+            print(self.config.models_to_sync)
             for model_name in self.config.models_to_sync:
                 try:
                     model_results = self._upload_model(model_name)
@@ -79,11 +80,12 @@ class SyncService:
             app_label, model = model_name.split(".")
             Model = apps.get_model(app_label, model)
         except LookupError:
-            logger.error(f"Modèle {model_name} introuvable")
+            logger.error(f"Modèle {model} introuvable")
             return results
         
         # Récupérer les objets modifiés depuis la dernière sync
         last_sync = self.config.last_sync_upload or timezone.now() - timedelta(days=365)
+        print("last_sync,", last_sync)
         
         # Objets à synchroniser
         queryset = Model.objects.filter(
@@ -91,10 +93,10 @@ class SyncService:
             updatedAt__gt=last_sync,
             deleted=False
         )
-        
+        print(queryset)
         # Si le modèle a is_shared, ne sync que is_shared=True
         if hasattr(Model, 'is_shared'):
-            queryset = queryset.filter(is_shared=False)
+            queryset = queryset.filter(is_shared=True)
         
         for obj in queryset:
             try:
@@ -108,7 +110,7 @@ class SyncService:
     
     def _upload_object(self, obj, model_name):
         """Uploader un objet individuel"""
-        
+        print("ici")
         # Vérifier s'il existe déjà un log en attente
         existing_log = SyncLog.objects.filter(
             hospital_id=self.hospital_id,

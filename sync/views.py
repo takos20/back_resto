@@ -149,6 +149,7 @@ class SyncViewSet(viewsets.ViewSet):
 
         try:
             config = SyncConfig.objects.get(hospital_id=hospital_id)
+            print("config", config)
             service = SyncService(hospital_id=hospital_id, config=config)
             results = service.upload_changes(force=force)
 
