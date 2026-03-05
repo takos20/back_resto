@@ -138,15 +138,16 @@ class SyncService:
             # Envoyer au serveur distant
             url = f"{self.config.remote_api_url}/sync/model/{model_name.lower()}"
             
-            if hasattr(obj, 'code') and obj.code:
-                # Tentative de UPDATE
-                response = self.session.put(f"{url}{obj.code}/", json=data)
-                if response.status_code == 404:
-                    # Créer si n'existe pas
-                    response = self.session.post(url, json=data)
-            else:
+            # if hasattr(obj, 'code') and obj.code:
+            #     # Tentative de UPDATE
+            #     response = self.session.put(f"{url}{obj.code}/", json=data)
+            #     if response.status_code == 404:
+            #         # Créer si n'existe pas
+            #         response = self.session.post(url, json=data)
+            # else:
                 # CREATE
-                response = self.session.post(url, json=data)
+            print(url)
+            response = self.session.post(url, json=data)
             
             if response.status_code in [200, 201]:
                 sync_log.status = 'SUCCESS'

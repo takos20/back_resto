@@ -28,22 +28,22 @@ class SyncViewSet(viewsets.ViewSet):
     def get_permissions(self):
         return [AllowAny()]
 
-    @action(detail=False, methods=["put","post"], url_path=r'model/(?P<model>[^/.]+)')
-    def sync_model_create(self, request, model=None):
+    @action(detail=False, methods=["post"],url_path=r'model/(?P<models>[^/.]+)', url_name='sync-model-create')
+    def sync_model_create(self, request, models=None):
         api_key = request.headers.get("X-API-KEY")
         hospital_id = request.data.get("hospital_id")
         code = request.data.get("code")
+        
 
         if not hospital_id:
             return Response({"error": "hospital_id requis"}, status=400)
         try:
             config = SyncConfig.objects.get(hospital_id=hospital_id)
-
             # Vérification API KEY
             if not api_key or api_key != config.api_token:
                 return Response({"error": "Unauthorized"}, status=401)
         
-            model_name = model.capitalize()
+            model_name = models.capitalize()
             model_path = None
             for m in config.models_to_sync:
                 if m.endswith(f".{model_name}"):
@@ -88,8 +88,8 @@ class SyncViewSet(viewsets.ViewSet):
         except Exception as e:
             return 'failed'
       
-    @action(detail=False, methods=["get"], url_path=r'model/(?P<model>[^/.]+)')
-    def sync_model(self, request, model=None):
+    @action(detail=False, methods=["get"], url_path=r'model/(?P<models>[^/.]+)', url_name='sync-model-list')
+    def sync_model_list(self, request, models=None):
 
         hospital_id = request.query_params.get("hospital_id")
         updated_since = request.query_params.get("updated_since")
@@ -108,7 +108,7 @@ class SyncViewSet(viewsets.ViewSet):
             if not api_key or api_key != config.api_token:
                 return Response({"error": "Unauthorized"}, status=401)
 
-            model_name = model.capitalize()
+            model_name = models.capitalize()
 
             model_path = None
             for m in config.models_to_sync:
